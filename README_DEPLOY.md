@@ -37,3 +37,7 @@ Progress and notes are stored in browser localStorage.
 ## Extending to more companies
 
 Add new objects to `problems.js` with a different company/category tag. The current app is intentionally company-neutral in code, so it can host Dropbox now and add Meta, Airbnb, Stripe, etc. later.
+
+
+## IDE-style editor upgrade
+This version uses CodeMirror in the browser for line numbers, SQL/Python syntax highlighting, bracket matching, tab indentation, Ctrl/Cmd+Enter to run tests, and a Format / indent button. It still runs entirely as static hosting on GitHub Pages/Netlify/Cloudflare Pages.

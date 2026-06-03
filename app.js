@@ -2,11 +2,56 @@ const $ = id => document.getElementById(id);
 let selected = null;
 let SQL = null;
 let pyodide = null;
+let codeEditor = null;
 const storageKey = 'dbx-de-gym-v1';
 const state = JSON.parse(localStorage.getItem(storageKey) || '{}');
 state.done ||= {}; state.notes ||= {}; state.code ||= {};
 function save(){ localStorage.setItem(storageKey, JSON.stringify(state)); updateStats(); }
 function esc(s){ return String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function getCode(){ return codeEditor ? codeEditor.getValue() : $('code').value; }
+function setCode(value, clearHistory=true){
+  const next = value ?? '';
+  if(codeEditor){
+    codeEditor.setValue(next);
+    if(clearHistory) codeEditor.clearHistory();
+    setTimeout(() => codeEditor.refresh(), 0);
+  } else {
+    $('code').value = next;
+  }
+}
+function editorModeFor(runtime){
+  if(runtime === 'python') return 'text/x-python';
+  if(runtime === 'sql') return 'text/x-sql';
+  return 'text/plain';
+}
+function initEditor(){
+  if(typeof CodeMirror === 'undefined') return;
+  codeEditor = CodeMirror.fromTextArea($('code'), {
+    lineNumbers: true,
+    mode: 'text/x-python',
+    indentUnit: 4,
+    tabSize: 4,
+    indentWithTabs: false,
+    smartIndent: true,
+    matchBrackets: true,
+    autoCloseBrackets: true,
+    styleActiveLine: true,
+    lineWrapping: false,
+    viewportMargin: Infinity,
+    extraKeys: {
+      'Ctrl-Enter': () => $('runTests').click(),
+      'Cmd-Enter': () => $('runTests').click(),
+      'Tab': cm => {
+        if(cm.somethingSelected()) cm.indentSelection('add');
+        else cm.replaceSelection(' '.repeat(cm.getOption('indentUnit')), 'end', '+input');
+      },
+      'Shift-Tab': cm => cm.indentSelection('subtract')
+    }
+  });
+  codeEditor.on('change', () => {
+    if(selected){ state.code[selected.id] = getCode(); save(); }
+  });
+}
 function fillFilters(){
   const cats = [...new Set(PROBLEMS.map(p=>p.category))].sort();
   const diffs = [...new Set(PROBLEMS.map(p=>p.difficulty))].sort();
@@ -43,12 +88,13 @@ function selectProblem(id){
   $('meta').textContent = `${selected.id} • ${selected.category} • ${selected.difficulty} • ${selected.priority} • ${selected.day}`;
   $('title').textContent = selected.title;
   $('prompt').textContent = selected.prompt;
-  $('code').value = state.code[selected.id] ?? selected.starter ?? '';
+  if(codeEditor) codeEditor.setOption('mode', editorModeFor(selected.runtime));
+  setCode(state.code[selected.id] ?? selected.starter ?? '');
   $('notes').value = state.notes[selected.id] ?? '';
   $('markDone').textContent = state.done[selected.id] ? 'Mark not done' : 'Mark done';
   $('editorLabel').textContent = selected.runtime === 'sql' ? 'SQL answer' : selected.runtime === 'python' ? 'Python answer' : 'Structured answer / STAR notes';
-  if(selected.runtime === 'sql') $('testInfo').innerHTML = `<strong>Runnable SQL:</strong> ${selected.expected.length} expected row(s). Use SQLite syntax. Your output must match expected rows and order.`;
-  else if(selected.runtime === 'python') $('testInfo').innerHTML = `<strong>Runnable Python:</strong> define the requested function/class. Tests run in Pyodide.`;
+  if(selected.runtime === 'sql') $('testInfo').innerHTML = `<strong>Runnable SQL:</strong> ${selected.expected.length} expected row(s). Use SQLite syntax. Your output must match expected rows and order. Formatting supports SQL indentation, line numbers, bracket matching, and Ctrl/Cmd+Enter.`;
+  else if(selected.runtime === 'python') $('testInfo').innerHTML = `<strong>Runnable Python:</strong> define the requested function/class. Tests run in Pyodide. Formatting supports Python indentation, line numbers, bracket matching, and Ctrl/Cmd+Enter.`;
   else $('testInfo').innerHTML = `<strong>Rubric:</strong><ul class="rubricList">${(selected.rubric||[]).map(r=>`<li>${esc(r)}</li>`).join('')}</ul>`;
   $('output').textContent = 'Output will appear here.';
   renderList();
@@ -61,7 +107,7 @@ async function runSQL(){
   await ensureSQL();
   const db = new SQL.Database();
   db.run(selected.setup);
-  const res = db.exec($('code').value);
+  const res = db.exec(getCode());
   const rows = res.length ? res[0].values.map(vals => Object.fromEntries(res[0].columns.map((c,i)=>[c, vals[i]]))) : [];
   const got = normalizeRows(rows), exp = normalizeRows(selected.expected);
   const pass = JSON.stringify(got) === JSON.stringify(exp);
@@ -72,17 +118,51 @@ async function ensurePy(){
 }
 async function runPython(){
   await ensurePy();
-  const code = $('code').value + '\n' + selected.testCode;
+  const code = getCode() + '\n' + selected.testCode;
   try { await pyodide.runPythonAsync(code); $('output').textContent = '✅ PASS\nAll tests passed.'; }
   catch(e){ $('output').textContent = '❌ FAIL\n' + e.message; }
 }
 function checkRubric(){
   $('output').textContent = 'Rubric checklist:\n' + (selected.rubric||[]).map((r,i)=>`${i+1}. ${r}`).join('\n') + '\n\nTip: answer verbally in 2-4 minutes for Medium questions and 8-12 minutes for Staff system design questions.';
 }
-$('runTests').onclick = async () => { if(!selected) return; state.code[selected.id] = $('code').value; save(); try{ if(selected.runtime==='sql') await runSQL(); else if(selected.runtime==='python') await runPython(); else checkRubric(); } catch(e){ $('output').textContent = 'Error: ' + (e.stack || e.message); } };
+function basicSQLFormat(sql){
+  if(!sql.trim()) return '';
+  let out = sql.replace(/\s+/g, ' ').trim();
+  out = out.replace(/\s*,\s*/g, ',\n  ');
+  const breakBefore = ['WITH','SELECT','FROM','WHERE','GROUP BY','HAVING','ORDER BY','LIMIT','UNION ALL','UNION','LEFT JOIN','RIGHT JOIN','FULL OUTER JOIN','INNER JOIN','OUTER JOIN','JOIN'];
+  breakBefore.forEach(k => { out = out.replace(new RegExp('\\s+' + k.replace(/ /g, '\\s+') + '\\b', 'gi'), '\n' + k); });
+  ['ON','AND','OR'].forEach(k => { out = out.replace(new RegExp('\\s+' + k + '\\b', 'gi'), '\n  ' + k); });
+  const kw = ['select','from','where','group by','having','order by','limit','with','union all','union','left join','right join','full outer join','inner join','outer join','join','on','and','or','as','case','when','then','else','end','over','partition by'];
+  kw.sort((a,b)=>b.length-a.length).forEach(k => { out = out.replace(new RegExp('\\b' + k.replace(/ /g, '\\s+') + '\\b', 'gi'), k.toUpperCase()); });
+  return out.replace(/\n{2,}/g, '\n').replace(/^\n/, '').trim() + '\n';
+}
+function normalizeCodeWhitespace(code){
+  return code.replace(/\t/g, '    ').replace(/[ \t]+$/gm, '').replace(/\n{3,}$/g, '\n\n');
+}
+function indentAllLines(){
+  if(!codeEditor) return;
+  const cursor = codeEditor.getCursor();
+  codeEditor.operation(() => {
+    for(let i=0; i<codeEditor.lineCount(); i++) codeEditor.indentLine(i, 'smart');
+  });
+  codeEditor.setCursor(cursor);
+}
+function formatCurrentCode(){
+  if(!selected) return;
+  let next = getCode();
+  if(selected.runtime === 'sql') next = basicSQLFormat(next);
+  else next = normalizeCodeWhitespace(next);
+  setCode(next, false);
+  if(selected.runtime !== 'sql') indentAllLines();
+  state.code[selected.id] = getCode();
+  save();
+  if(codeEditor) codeEditor.focus();
+}
+$('runTests').onclick = async () => { if(!selected) return; state.code[selected.id] = getCode(); save(); try{ if(selected.runtime==='sql') await runSQL(); else if(selected.runtime==='python') await runPython(); else checkRubric(); } catch(e){ $('output').textContent = 'Error: ' + (e.stack || e.message); } };
 $('markDone').onclick = () => { if(!selected) return; state.done[selected.id] = !state.done[selected.id]; save(); selectProblem(selected.id); };
-$('resetCode').onclick = () => { if(selected){ $('code').value = selected.starter || ''; state.code[selected.id] = $('code').value; save(); } };
+$('formatCode').onclick = formatCurrentCode;
+$('resetCode').onclick = () => { if(selected){ setCode(selected.starter || ''); state.code[selected.id] = getCode(); save(); } };
 $('notes').oninput = () => { if(selected){ state.notes[selected.id] = $('notes').value; save(); } };
-$('code').oninput = () => { if(selected){ state.code[selected.id] = $('code').value; save(); } };
+$('code').oninput = () => { if(!codeEditor && selected){ state.code[selected.id] = $('code').value; save(); } };
 ['search','category','difficulty','priority','runtime'].forEach(id => $(id).addEventListener('input', renderList));
-fillFilters(); renderDays(); updateStats(); selectProblem(PROBLEMS[0].id);
+initEditor(); fillFilters(); renderDays(); updateStats(); selectProblem(PROBLEMS[0].id);
