@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Dropbox Data Engineering Interview Gym</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js"></script>
+  <script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <h1>Dropbox Data Engineering Interview Gym</h1>
+      <p>1-week question bank, runnable SQL/Python drills, system-design rubrics, and progress tracking.</p>
+    </div>
+    <div class="stats">
+      <div><span id="doneCount">0</span><small>done</small></div>
+      <div><span id="totalCount">0</span><small>total</small></div>
+      <div><span id="p0Count">0</span><small>P0</small></div>
+    </div>
+  </header>
+
+  <section class="plan">
+    <h2>7-Day Sprint</h2>
+    <div class="daygrid" id="dayGrid"></div>
+  </section>
+
+  <main class="layout">
+    <aside class="sidebar">
+      <div class="filters">
+        <input id="search" placeholder="Search questions, tags, category..." />
+        <select id="category"><option value="">All categories</option></select>
+        <select id="difficulty"><option value="">All difficulty</option></select>
+        <select id="priority"><option value="">All priority</option><option>P0</option><option>P1</option><option>P2</option></select>
+        <select id="runtime"><option value="">All modes</option><option value="sql">Runnable SQL</option><option value="python">Runnable Python</option><option value="rubric">Rubric / verbal</option></select>
+      </div>
+      <div class="problemList" id="problemList"></div>
+    </aside>
+
+    <section class="workspace">
+      <div class="problemHeader">
+        <div>
+          <p class="eyebrow" id="meta"></p>
+          <h2 id="title">Select a question</h2>
+        </div>
+        <button id="markDone">Mark done</button>
+      </div>
+      <article id="prompt" class="prompt"></article>
+      <div id="testInfo" class="testInfo"></div>
+      <div class="editorWrap">
+        <div class="editorHeader">
+          <span id="editorLabel">Answer</span>
+          <button id="resetCode">Reset starter</button>
+          <button id="runTests" class="primary">Run tests / Check rubric</button>
+        </div>
+        <textarea id="code" spellcheck="false"></textarea>
+      </div>
+      <pre id="output" class="output">Output will appear here.</pre>
+      <div class="notesBox">
+        <label for="notes">Your notes</label>
+        <textarea id="notes" placeholder="Write your approach, edge cases, follow-ups, and mistakes here..."></textarea>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>Static app. Progress and notes are stored in localStorage in your browser. SQL uses SQLite via sql.js CDN; Python uses Pyodide CDN.</p>
+  </footer>
+  <script src="problems.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
