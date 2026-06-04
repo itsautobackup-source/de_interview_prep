@@ -2192,171 +2192,222 @@ window.PROBLEMS = [
   },
   {
     "id": "DBX-QSQL-001",
-    "title": "Find users with 7 consecutive active days.",
+    "title": "Users with 7 Consecutive Active Days",
     "category": "SQL",
     "difficulty": "Medium",
     "priority": "P1",
-    "runtime": "rubric",
-    "prompt": "Find users with 7 consecutive active days.\n\nAnswer structure: clarify assumptions, propose approach, discuss edge cases, and explain tradeoffs.",
-    "starter": "",
-    "setup": "",
-    "expected": [],
-    "testCode": "",
-    "rubric": [
-      "Clarify assumptions",
-      "State approach",
-      "Discuss scale/reliability tradeoffs",
-      "Mention validation/edge cases"
+    "runtime": "sql",
+    "prompt": "Find users who had at least one streak of 7 consecutive active calendar days. A user is considered active on a date if they have at least one row in user_activity for that date. Output user_id ordered ascending.\n\nReturn exactly the requested columns in the requested order.",
+    "starter": "WITH dedup AS (\n  SELECT DISTINCT user_id, activity_date\n  FROM user_activity\n), numbered AS (\n  SELECT\n    user_id,\n    activity_date,\n    ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY activity_date) AS rn\n  FROM dedup\n)\nSELECT ...;",
+    "setup": "CREATE TABLE user_activity(user_id INTEGER, activity_date TEXT);\nINSERT INTO user_activity VALUES\n(1,'2024-01-01'),(1,'2024-01-02'),(1,'2024-01-03'),(1,'2024-01-04'),(1,'2024-01-05'),(1,'2024-01-06'),(1,'2024-01-07'),\n(2,'2024-01-01'),(2,'2024-01-02'),(2,'2024-01-04'),(2,'2024-01-05'),(2,'2024-01-06'),(2,'2024-01-07'),(2,'2024-01-08'),\n(3,'2024-02-10'),(3,'2024-02-11'),(3,'2024-02-12'),(3,'2024-02-13'),(3,'2024-02-14'),(3,'2024-02-15'),(3,'2024-02-16'),(3,'2024-02-17'),\n(4,'2024-03-01'),(4,'2024-03-03');",
+    "expected": [
+      {
+        "user_id": 1
+      },
+      {
+        "user_id": 3
+      }
     ],
+    "testCode": "",
+    "rubric": [],
     "tags": [
-      "quick-fire"
+      "gap and island",
+      "streaks",
+      "window functions"
     ],
     "day": "Day 3",
-    "source": "Role-aligned original"
+    "source": "Role-aligned original, runnable SQL fixture v5"
   },
   {
     "id": "DBX-QSQL-003",
-    "title": "Return files whose size is above the 95th percentile per team.",
+    "title": "Files Above the 95th Percentile per Team",
     "category": "SQL",
     "difficulty": "Medium",
     "priority": "P1",
-    "runtime": "rubric",
-    "prompt": "Return files whose size is above the 95th percentile per team.\n\nAnswer structure: clarify assumptions, propose approach, discuss edge cases, and explain tradeoffs.",
-    "starter": "",
-    "setup": "",
-    "expected": [],
-    "testCode": "",
-    "rubric": [
-      "Clarify assumptions",
-      "State approach",
-      "Discuss scale/reliability tradeoffs",
-      "Mention validation/edge cases"
+    "runtime": "sql",
+    "prompt": "Return files whose size is above the 95th percentile per team. For this SQLite exercise, define \"above the 95th percentile\" as rows where CUME_DIST() over file_size_mb ascending is greater than 0.95 within the team. Output team_id, file_id, file_size_mb ordered by team_id, file_id.\n\nReturn exactly the requested columns in the requested order.",
+    "starter": "WITH ranked AS (\n  SELECT\n    team_id,\n    file_id,\n    file_size_mb,\n    CUME_DIST() OVER (PARTITION BY team_id ORDER BY file_size_mb) AS cd\n  FROM files\n)\nSELECT ...;",
+    "setup": "CREATE TABLE files(file_id INTEGER, team_id INTEGER, file_size_mb REAL);\nINSERT INTO files VALUES\n(101,1,10.0),(102,1,20.0),(103,1,30.0),(104,1,40.0),(105,1,500.0),\n(201,2,5.0),(202,2,6.0),(203,2,7.0),(204,2,8.0),(205,2,100.0);",
+    "expected": [
+      {
+        "team_id": 1,
+        "file_id": 105,
+        "file_size_mb": 500.0
+      },
+      {
+        "team_id": 2,
+        "file_id": 205,
+        "file_size_mb": 100.0
+      }
     ],
+    "testCode": "",
+    "rubric": [],
     "tags": [
-      "quick-fire"
+      "percentiles",
+      "window functions"
     ],
     "day": "Day 5",
-    "source": "Role-aligned original"
+    "source": "Role-aligned original, runnable SQL fixture v5"
   },
   {
     "id": "DBX-QSQL-004",
-    "title": "Find the second most recent upload per user.",
+    "title": "Second Most Recent Upload per User",
     "category": "SQL",
     "difficulty": "Medium",
     "priority": "P1",
-    "runtime": "rubric",
-    "prompt": "Find the second most recent upload per user.\n\nAnswer structure: clarify assumptions, propose approach, discuss edge cases, and explain tradeoffs.",
-    "starter": "",
-    "setup": "",
-    "expected": [],
-    "testCode": "",
-    "rubric": [
-      "Clarify assumptions",
-      "State approach",
-      "Discuss scale/reliability tradeoffs",
-      "Mention validation/edge cases"
+    "runtime": "sql",
+    "prompt": "Find the second most recent upload per user. Users with fewer than two uploads should be excluded. Output user_id, file_id, uploaded_at ordered by user_id.\n\nReturn exactly the requested columns in the requested order.",
+    "starter": "WITH ranked AS (\n  SELECT\n    user_id,\n    file_id,\n    uploaded_at,\n    ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY uploaded_at DESC, file_id DESC) AS rn\n  FROM uploads\n)\nSELECT ...;",
+    "setup": "CREATE TABLE uploads(user_id INTEGER, file_id INTEGER, uploaded_at TEXT);\nINSERT INTO uploads VALUES\n(1,1001,'2024-01-01 09:00'),(1,1002,'2024-01-03 09:00'),(1,1003,'2024-01-05 09:00'),\n(2,2001,'2024-01-02 10:00'),\n(3,3001,'2024-02-01 12:00'),(3,3002,'2024-02-03 12:00');",
+    "expected": [
+      {
+        "user_id": 1,
+        "file_id": 1002,
+        "uploaded_at": "2024-01-03 09:00"
+      },
+      {
+        "user_id": 3,
+        "file_id": 3001,
+        "uploaded_at": "2024-02-01 12:00"
+      }
     ],
+    "testCode": "",
+    "rubric": [],
     "tags": [
-      "quick-fire"
+      "ranking",
+      "window functions"
     ],
     "day": "Day 6",
-    "source": "Role-aligned original"
+    "source": "Role-aligned original, runnable SQL fixture v5"
   },
   {
     "id": "DBX-QSQL-006",
-    "title": "Detect schema drift from event payload key counts.",
+    "title": "Detect Schema Drift from Event Payload Key Counts",
     "category": "SQL",
     "difficulty": "Medium",
     "priority": "P1",
-    "runtime": "rubric",
-    "prompt": "Detect schema drift from event payload key counts.\n\nAnswer structure: clarify assumptions, propose approach, discuss edge cases, and explain tradeoffs.",
-    "starter": "",
-    "setup": "",
-    "expected": [],
-    "testCode": "",
-    "rubric": [
-      "Clarify assumptions",
-      "State approach",
-      "Discuss scale/reliability tradeoffs",
-      "Mention validation/edge cases"
+    "runtime": "sql",
+    "prompt": "Detect payload keys for upload events whose presence rate changed by at least 0.40 between 2024-01-01 and 2024-01-02. Presence rate = key_present_count / event_count. Output payload_key, previous_rate, current_rate, absolute_change ordered by payload_key. Round rates and absolute_change to 2 decimal places.\n\nReturn exactly the requested columns in the requested order.",
+    "starter": "WITH rates AS (\n  SELECT\n    event_date,\n    payload_key,\n    ROUND(1.0 * key_present_count / event_count, 2) AS presence_rate\n  FROM payload_key_counts\n  WHERE event_type = 'upload'\n)\nSELECT ...;",
+    "setup": "CREATE TABLE payload_key_counts(event_date TEXT, event_type TEXT, payload_key TEXT, event_count INTEGER, key_present_count INTEGER);\nINSERT INTO payload_key_counts VALUES\n('2024-01-01','upload','content_hash',100,100),('2024-01-02','upload','content_hash',100,55),\n('2024-01-01','upload','file_size',100,100),('2024-01-02','upload','file_size',100,100),\n('2024-01-01','upload','mime_type',100,0),('2024-01-02','upload','mime_type',100,80),\n('2024-01-01','share','recipient_id',50,50),('2024-01-02','share','recipient_id',50,49);",
+    "expected": [
+      {
+        "payload_key": "content_hash",
+        "previous_rate": 1.0,
+        "current_rate": 0.55,
+        "absolute_change": 0.45
+      },
+      {
+        "payload_key": "mime_type",
+        "previous_rate": 0.0,
+        "current_rate": 0.8,
+        "absolute_change": 0.8
+      }
     ],
+    "testCode": "",
+    "rubric": [],
     "tags": [
-      "quick-fire"
+      "data quality",
+      "schema drift"
     ],
     "day": "Day 1",
-    "source": "Role-aligned original"
+    "source": "Role-aligned original, runnable SQL fixture v5"
   },
   {
     "id": "DBX-QSQL-007",
-    "title": "Build a query for net new paid teams by month.",
+    "title": "Net New Paid Teams by Month",
     "category": "SQL",
     "difficulty": "Medium",
     "priority": "P1",
-    "runtime": "rubric",
-    "prompt": "Build a query for net new paid teams by month.\n\nAnswer structure: clarify assumptions, propose approach, discuss edge cases, and explain tradeoffs.",
-    "starter": "",
-    "setup": "",
-    "expected": [],
-    "testCode": "",
-    "rubric": [
-      "Clarify assumptions",
-      "State approach",
-      "Discuss scale/reliability tradeoffs",
-      "Mention validation/edge cases"
+    "runtime": "sql",
+    "prompt": "Build a query for net new paid teams by month. paid_started adds one paid team and paid_canceled removes one paid team. Output mth, paid_starts, paid_cancellations, net_new_paid ordered by mth.\n\nReturn exactly the requested columns in the requested order.",
+    "starter": "SELECT\n  substr(event_time, 1, 7) AS mth,\n  ...\nFROM team_subscription_events\nGROUP BY substr(event_time, 1, 7)\nORDER BY mth;",
+    "setup": "CREATE TABLE team_subscription_events(team_id INTEGER, event_time TEXT, event_type TEXT);\nINSERT INTO team_subscription_events VALUES\n(1,'2024-01-05','paid_started'),(2,'2024-01-07','paid_started'),\n(3,'2024-02-01','paid_started'),(2,'2024-02-10','paid_canceled'),\n(4,'2024-03-15','paid_started'),(1,'2024-03-20','paid_canceled'),(5,'2024-03-22','paid_started');",
+    "expected": [
+      {
+        "mth": "2024-01",
+        "paid_starts": 2,
+        "paid_cancellations": 0,
+        "net_new_paid": 2
+      },
+      {
+        "mth": "2024-02",
+        "paid_starts": 1,
+        "paid_cancellations": 1,
+        "net_new_paid": 0
+      },
+      {
+        "mth": "2024-03",
+        "paid_starts": 2,
+        "paid_cancellations": 1,
+        "net_new_paid": 1
+      }
     ],
+    "testCode": "",
+    "rubric": [],
     "tags": [
-      "quick-fire"
+      "subscriptions",
+      "aggregation"
     ],
     "day": "Day 2",
-    "source": "Role-aligned original"
+    "source": "Role-aligned original, runnable SQL fixture v5"
   },
   {
     "id": "DBX-QSQL-009",
-    "title": "Compute median upload size per platform.",
+    "title": "Median Upload Size per Platform",
     "category": "SQL",
     "difficulty": "Medium",
     "priority": "P1",
-    "runtime": "rubric",
-    "prompt": "Compute median upload size per platform.\n\nAnswer structure: clarify assumptions, propose approach, discuss edge cases, and explain tradeoffs.",
-    "starter": "",
-    "setup": "",
-    "expected": [],
-    "testCode": "",
-    "rubric": [
-      "Clarify assumptions",
-      "State approach",
-      "Discuss scale/reliability tradeoffs",
-      "Mention validation/edge cases"
+    "runtime": "sql",
+    "prompt": "Compute the exact median upload size per platform. For an even number of uploads on a platform, use the average of the two middle values. Output platform, median_upload_mb ordered by platform. Round median_upload_mb to 1 decimal place.\n\nReturn exactly the requested columns in the requested order.",
+    "starter": "WITH ranked AS (\n  SELECT\n    platform,\n    upload_size_mb,\n    ROW_NUMBER() OVER (PARTITION BY platform ORDER BY upload_size_mb) AS rn,\n    COUNT(*) OVER (PARTITION BY platform) AS cnt\n  FROM uploads\n)\nSELECT ...;",
+    "setup": "CREATE TABLE uploads(upload_id INTEGER, platform TEXT, upload_size_mb REAL);\nINSERT INTO uploads VALUES\n(1,'desktop',10.0),(2,'desktop',20.0),(3,'desktop',30.0),(4,'desktop',40.0),\n(5,'mobile',5.0),(6,'mobile',7.0),(7,'mobile',100.0),\n(8,'web',12.0),(9,'web',18.0);",
+    "expected": [
+      {
+        "platform": "desktop",
+        "median_upload_mb": 25.0
+      },
+      {
+        "platform": "mobile",
+        "median_upload_mb": 7.0
+      },
+      {
+        "platform": "web",
+        "median_upload_mb": 15.0
+      }
     ],
+    "testCode": "",
+    "rubric": [],
     "tags": [
-      "quick-fire"
+      "median",
+      "window functions"
     ],
     "day": "Day 4",
-    "source": "Role-aligned original"
+    "source": "Role-aligned original, runnable SQL fixture v5"
   },
   {
     "id": "DBX-QSQL-010",
-    "title": "Identify teams with declining active seats for three straight months.",
+    "title": "Teams with Three Consecutive Monthly Seat Declines",
     "category": "SQL",
     "difficulty": "Medium",
     "priority": "P1",
-    "runtime": "rubric",
-    "prompt": "Identify teams with declining active seats for three straight months.\n\nAnswer structure: clarify assumptions, propose approach, discuss edge cases, and explain tradeoffs.",
-    "starter": "",
-    "setup": "",
-    "expected": [],
-    "testCode": "",
-    "rubric": [
-      "Clarify assumptions",
-      "State approach",
-      "Discuss scale/reliability tradeoffs",
-      "Mention validation/edge cases"
+    "runtime": "sql",
+    "prompt": "Identify teams with three consecutive month-over-month declines in active seats. This requires four consecutive monthly rows where month2 < month1, month3 < month2, and month4 < month3. Output team_id ordered ascending.\n\nReturn exactly the requested columns in the requested order.",
+    "starter": "WITH sequenced AS (\n  SELECT\n    team_id,\n    mth,\n    active_seats,\n    LAG(active_seats, 1) OVER (PARTITION BY team_id ORDER BY mth) AS seats_m1,\n    LAG(active_seats, 2) OVER (PARTITION BY team_id ORDER BY mth) AS seats_m2,\n    LAG(active_seats, 3) OVER (PARTITION BY team_id ORDER BY mth) AS seats_m3\n  FROM team_seat_metrics\n)\nSELECT ...;",
+    "setup": "CREATE TABLE team_seat_metrics(team_id INTEGER, mth TEXT, active_seats INTEGER);\nINSERT INTO team_seat_metrics VALUES\n(1,'2024-01',100),(1,'2024-02',90),(1,'2024-03',80),(1,'2024-04',70),\n(2,'2024-01',50),(2,'2024-02',55),(2,'2024-03',54),(2,'2024-04',53),\n(3,'2024-01',200),(3,'2024-02',190),(3,'2024-03',195),(3,'2024-04',180);",
+    "expected": [
+      {
+        "team_id": 1
+      }
     ],
+    "testCode": "",
+    "rubric": [],
     "tags": [
-      "quick-fire"
+      "lag",
+      "trend detection"
     ],
     "day": "Day 5",
-    "source": "Role-aligned original"
+    "source": "Role-aligned original, runnable SQL fixture v5"
   },
   {
     "id": "DBX-SQL-011",
@@ -3337,75 +3388,123 @@ window.PROBLEMS = [
   },
   {
     "id": "DBX-QSQL-002",
-    "title": "Compute month-1, month-2, and month-3 retention by signup cohort.",
+    "title": "Cohort Retention Month 1, Month 2, Month 3",
     "category": "SQL",
-    "difficulty": "Medium",
+    "difficulty": "Hard",
     "priority": "P2",
-    "runtime": "rubric",
-    "prompt": "Compute month-1, month-2, and month-3 retention by signup cohort.\n\nAnswer structure: clarify assumptions, propose approach, discuss edge cases, and explain tradeoffs.",
-    "starter": "",
-    "setup": "",
-    "expected": [],
-    "testCode": "",
-    "rubric": [
-      "Clarify assumptions",
-      "State approach",
-      "Discuss scale/reliability tradeoffs",
-      "Mention validation/edge cases"
+    "runtime": "sql",
+    "prompt": "Compute month-1, month-2, and month-3 retention by signup cohort. Cohort month is the calendar month of signup_date. A user is retained in month N if they had at least one activity event in the Nth calendar month after their signup cohort month. Output cohort_month, cohort_size, m1_retained, m2_retained, m3_retained ordered by cohort_month.\n\nReturn exactly the requested columns in the requested order.",
+    "starter": "WITH cohorts AS (\n  SELECT user_id, substr(signup_date, 1, 7) AS cohort_month\n  FROM users\n)\nSELECT ...;",
+    "setup": "CREATE TABLE users(user_id INTEGER, signup_date TEXT);\nINSERT INTO users VALUES\n(1,'2024-01-05'),(2,'2024-01-15'),(3,'2024-02-01'),(4,'2024-01-20'),(5,'2024-02-12');\nCREATE TABLE activity(user_id INTEGER, activity_date TEXT);\nINSERT INTO activity VALUES\n(1,'2024-02-01'),(1,'2024-03-05'),\n(2,'2024-04-10'),\n(3,'2024-03-15'),(3,'2024-05-01'),\n(5,'2024-04-20'),(5,'2024-05-21');",
+    "expected": [
+      {
+        "cohort_month": "2024-01",
+        "cohort_size": 3,
+        "m1_retained": 1,
+        "m2_retained": 1,
+        "m3_retained": 1
+      },
+      {
+        "cohort_month": "2024-02",
+        "cohort_size": 2,
+        "m1_retained": 1,
+        "m2_retained": 1,
+        "m3_retained": 2
+      }
     ],
+    "testCode": "",
+    "rubric": [],
     "tags": [
-      "quick-fire"
+      "cohorts",
+      "retention",
+      "date logic"
     ],
     "day": "Day 4",
-    "source": "Role-aligned original"
+    "source": "Role-aligned original, runnable SQL fixture v5"
   },
   {
     "id": "DBX-QSQL-005",
-    "title": "Compute cumulative storage usage per team by day.",
+    "title": "Cumulative Storage Usage per Team by Day",
     "category": "SQL",
     "difficulty": "Medium",
     "priority": "P2",
-    "runtime": "rubric",
-    "prompt": "Compute cumulative storage usage per team by day.\n\nAnswer structure: clarify assumptions, propose approach, discuss edge cases, and explain tradeoffs.",
-    "starter": "",
-    "setup": "",
-    "expected": [],
+    "runtime": "sql",
+    "prompt": "Compute cumulative storage usage per team by day. storage_events contains daily deltas in GB. Multiple rows can occur for the same team and date; aggregate them before computing the cumulative total. Output team_id, event_date, daily_delta_gb, cumulative_storage_gb ordered by team_id, event_date.\n\nReturn exactly the requested columns in the requested order.",
+    "starter": "WITH daily AS (\n  SELECT team_id, event_date, SUM(delta_gb) AS daily_delta_gb\n  FROM storage_events\n  GROUP BY team_id, event_date\n)\nSELECT ...;",
+    "setup": "CREATE TABLE storage_events(team_id INTEGER, event_date TEXT, delta_gb INTEGER);\nINSERT INTO storage_events VALUES\n(1,'2024-01-01',10),(1,'2024-01-01',5),(1,'2024-01-02',-3),(1,'2024-01-04',8),\n(2,'2024-01-01',20),(2,'2024-01-03',10),(2,'2024-01-04',-5);",
+    "expected": [
+      {
+        "team_id": 1,
+        "event_date": "2024-01-01",
+        "daily_delta_gb": 15,
+        "cumulative_storage_gb": 15
+      },
+      {
+        "team_id": 1,
+        "event_date": "2024-01-02",
+        "daily_delta_gb": -3,
+        "cumulative_storage_gb": 12
+      },
+      {
+        "team_id": 1,
+        "event_date": "2024-01-04",
+        "daily_delta_gb": 8,
+        "cumulative_storage_gb": 20
+      },
+      {
+        "team_id": 2,
+        "event_date": "2024-01-01",
+        "daily_delta_gb": 20,
+        "cumulative_storage_gb": 20
+      },
+      {
+        "team_id": 2,
+        "event_date": "2024-01-03",
+        "daily_delta_gb": 10,
+        "cumulative_storage_gb": 30
+      },
+      {
+        "team_id": 2,
+        "event_date": "2024-01-04",
+        "daily_delta_gb": -5,
+        "cumulative_storage_gb": 25
+      }
+    ],
     "testCode": "",
-    "rubric": [
-      "Clarify assumptions",
-      "State approach",
-      "Discuss scale/reliability tradeoffs",
-      "Mention validation/edge cases"
-    ],
+    "rubric": [],
     "tags": [
-      "quick-fire"
+      "running total",
+      "window functions"
     ],
-    "day": "Day 7",
-    "source": "Role-aligned original"
+    "day": "Day 3",
+    "source": "Role-aligned original, runnable SQL fixture v5"
   },
   {
     "id": "DBX-QSQL-008",
-    "title": "Find users who shared files but never uploaded.",
+    "title": "Users Who Shared Files but Never Uploaded",
     "category": "SQL",
     "difficulty": "Medium",
     "priority": "P2",
-    "runtime": "rubric",
-    "prompt": "Find users who shared files but never uploaded.\n\nAnswer structure: clarify assumptions, propose approach, discuss edge cases, and explain tradeoffs.",
-    "starter": "",
-    "setup": "",
-    "expected": [],
+    "runtime": "sql",
+    "prompt": "Find users who shared at least one file but never uploaded any file. Output user_id ordered ascending.\n\nReturn exactly the requested columns in the requested order.",
+    "starter": "SELECT DISTINCT ...\nFROM shares s\nWHERE NOT EXISTS (...);",
+    "setup": "CREATE TABLE uploads(user_id INTEGER, file_id INTEGER, uploaded_at TEXT);\nINSERT INTO uploads VALUES\n(1,100,'2024-01-01'),(3,300,'2024-01-03'),(5,500,'2024-01-04');\nCREATE TABLE shares(sender_user_id INTEGER, file_id INTEGER, shared_at TEXT);\nINSERT INTO shares VALUES\n(1,100,'2024-01-02'),(2,200,'2024-01-02'),(2,201,'2024-01-03'),(4,400,'2024-01-04'),(5,500,'2024-01-05');",
+    "expected": [
+      {
+        "user_id": 2
+      },
+      {
+        "user_id": 4
+      }
+    ],
     "testCode": "",
-    "rubric": [
-      "Clarify assumptions",
-      "State approach",
-      "Discuss scale/reliability tradeoffs",
-      "Mention validation/edge cases"
-    ],
+    "rubric": [],
     "tags": [
-      "quick-fire"
+      "anti join",
+      "behavioral segments"
     ],
-    "day": "Day 3",
-    "source": "Role-aligned original"
+    "day": "Day 6",
+    "source": "Role-aligned original, runnable SQL fixture v5"
   },
   {
     "id": "DBX-QSPK-041",
